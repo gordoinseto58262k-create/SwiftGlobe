@@ -1,16 +1,14 @@
+import { createRootRoute, Outlet } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Outlet, createRootRoute } from '@tanstack/react-router';
 
-// ⚠️ SUAS CHAVES DO SUPABASE JÁ ESTÃO AQUI
+// ⚠️ SUAS CHAVES DO SUPABASE
 const supabase = createClient(
   'https://fmpakiiodmmcdkfozinj.supabase.co',
   'sb_publishable_LMFzj5Gwpx99pUGWE2Y0AQ_3Holr_xj'
 );
 
-// ==========================================
-// 1. O ESPIÃO (Registra tudo no fundo)
-// ==========================================
+// 1. O ESPIÃO (Fica escondido registrando cliques)
 function Espiao() {
   useEffect(() => {
     const registrar = async (acao: string, detalhes: string) => {
@@ -23,25 +21,14 @@ function Espiao() {
       registrar('Clique', `Clicou em: ${texto.substring(0, 50)}`);
     };
 
-    const handleSubmit = () => {
-      registrar('Formulário', 'Alguém enviou um formulário');
-    };
-
     document.addEventListener('click', handleClick);
-    document.addEventListener('submit', handleSubmit);
-
-    return () => {
-      document.removeEventListener('click', handleClick);
-      document.removeEventListener('submit', handleSubmit);
-    };
+    return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  return null; 
+  return null;
 }
 
-// ==========================================
-// 2. O PAINEL ADMIN (A tela que você vê)
-// ==========================================
+// 2. O PAINEL ADMIN
 function PainelAdmin() {
   const [registros, setRegistros] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -64,7 +51,6 @@ function PainelAdmin() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial', maxWidth: '800px', margin: '0 auto' }}>
       <h1>Painel de Segurança</h1>
-      <p>Mostrando os últimos 100 cliques no site.</p>
       <table border={1} cellPadding={10} style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -74,41 +60,37 @@ function PainelAdmin() {
           </tr>
         </thead>
         <tbody>
-          {registros.length === 0 ? (
-            <tr>
-              <td colSpan={3} style={{ textAlign: 'center' }}>Nenhum registro ainda. Clique no site para testar!</td>
+          {registros.map((log, index) => (
+            <tr key={index}>
+              <td>{new Date(log.data_hora).toLocaleString('pt-BR')}</td>
+              <td>{log.acao}</td>
+              <td>{log.detalhes}</td>
             </tr>
-          ) : (
-            registros.map((log, index) => (
-              <tr key={index}>
-                <td>{new Date(log.data_hora).toLocaleString('pt-BR')}</td>
-                <td>{log.acao}</td>
-                <td>{log.detalhes}</td>
-              </tr>
-            ))
-          )}
+          ))}
         </tbody>
       </table>
     </div>
   );
 }
 
-// ==========================================
-// 3. O CÉREBRO DO SITE (Onde tudo se junta)
-// ==========================================
+// 3. A RAIZ DO SITE (Onde tudo se junta)
 export const Route = createRootRoute({
-  component: () => {
-    // Verifica se a pessoa digitou /admin no navegador
-    const isAdminPage = typeof window !== 'undefined' && window.location.pathname === '/admin';
-
-    return (
-      <>
-        {/* O espião fica ligado o tempo todo */}
-        <Espiao /> 
-        
-        {/* Se estiver na página /admin, mostra o painel. Se não, mostra o site normal. */}
-        {isAdminPage ? <PainelAdmin /> : <Outlet />}
-      </>
-    );
-  },
+  component: RootComponent,
 });
+
+function RootComponent() {
+  // Verifica se a URL é /admin
+  const isAdmin = typeof window !== 'undefined' && window.location.pathname === '/admin';
+
+  // Se for admin, mostra o painel. Se não, mostra o site normal (Outlet)
+  if (isAdmin) {
+    return <PainelAdmin />;
+  }
+
+  return (
+    <>
+      <Espiao />
+      <Outlet />
+    </>
+  );
+}
